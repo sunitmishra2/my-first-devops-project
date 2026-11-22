@@ -1,0 +1,109 @@
+# Automated CI/CD Web Deployment Pipeline
+
+An end-to-end DevOps project demonstrating automated container building, integration testing, and zero-downtime static web deployment using **Docker** and **GitHub Actions**.
+
+## Architecture & Command Flow
+
+Every push to `main` or `master` triggers a two-stage automated pipeline:
+
+```mermaid
+flowchart LR
+    A["Developer Push<br/>(git add / commit / push)"] --> B["GitHub Repo<br/>(.github/workflows)"]
+    B --> C{GitHub Actions CI/CD}
+    subgraph Stage 1: Build & Test
+        C --> D["Build Image<br/>(docker buildx build)"]
+        D --> E["Run Container<br/>(docker run -d -p 8080:80)"]
+        E --> F["Smoke Test<br/>(curl & grep)"]
+    end
+    subgraph Stage 2: Deploy
+        F -->|Tests Pass| G["Package Artifact<br/>(cp index.html _site/)"]
+        G --> H["Deploy Pages<br/>(actions/deploy-pages)"]
+    end
+    H --> I((Live Website))
+```
+
+## Tech Stack
+* **Source Control & Cloud IDE:** Git, GitHub, GitHub Codespaces
+* **CI/CD Automation:** GitHub Actions (Multi-stage YAML workflow with Buildx caching & concurrency control)
+* **Containerization:** Docker (`nginx:alpine` lightweight base image)
+* **Hosting / Deployment Target:** GitHub Pages
+
+## Repository Structure
+
+```text
+my-first-devops-project/
+├── .github/
+│   └── workflows/
+│       └── test-pipeline.yml   # Multi-stage CI/CD workflow definition
+├── Dockerfile                  # Lightweight Nginx container blueprint
+├── index.html                  # Web application source
+└── README.md                   # Project documentation & command reference
+```
+
+---
+
+## Complete Command Reference (Notes)
+
+### 1. Project & File Setup Commands (Codespace Terminal)
+```bash
+# Create required directories for GitHub Actions
+mkdir -p .github/workflows
+
+# Verify file structure
+ls -la
+ls -la .github/workflows
+```
+
+### 2. Local Docker Build & Test Commands
+```bash
+# Build the Docker image from Dockerfile
+docker build -t my-devops-site:local .
+
+# Verify the image was created
+docker images
+
+# Run the container in the background (maps host port 8080 -> container port 80)
+docker run -d --name my-web-test -p 8080:80 my-devops-site:local
+
+# Check running containers
+docker ps
+
+# Verify index.html is served properly
+curl http://localhost:8080
+
+# View container logs if troubleshooting is needed
+docker logs my-web-test
+
+# Stop and remove the test container
+docker rm -f my-web-test
+```
+
+### 3. Git Commands to Trigger the Pipeline
+```bash
+# Check modified or untracked files
+git status
+
+# Stage all changes
+git add .
+
+# Commit changes with a descriptive message
+git commit -m "Update website and CI/CD pipeline"
+
+# Push to GitHub (automatically triggers GitHub Actions)
+git push
+```
+
+---
+
+## Pipeline Breakdown (What Runs Automatically)
+
+1. **Build & Test Stage (`build-and-test`):**
+   * Checks out code (`actions/checkout@v4`) and sets up **Docker Buildx** (`docker/setup-buildx-action@v3`) with GitHub Actions layer caching (`type=gha`).
+   * Builds the container image (`docker/build-push-action@v6`) with provenance and SBOM metadata.
+   * Launches an isolated container on port `8080`, runs a retry-enabled `curl` check + `grep` content validation, and tears down the container automatically via a `trap cleanup EXIT` hook.
+2. **Deploy Stage (`deploy-pages`):**
+   * Runs only after `build-and-test` passes on a push to `main` or `master`.
+   * Copies `index.html` into `_site/`, uploads the artifact (`actions/upload-pages-artifact@v3`), and deploys it live (`actions/deploy-pages@v4`).
+
+## Live Demo
+View the deployed application here: [Live Site](https://github.io)
