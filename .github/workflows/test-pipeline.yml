@@ -1,0 +1,15 @@
+name: Meri pehli pipeline
+on:
+  push:
+jobs:
+  check_website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (code ko machine pe lana)
+        uses: actions/checkout@v4
+      - name: Run tests
+        run: |
+          echo "Running tests..."
+          ls -la
+          cat index.html
+          echo "Tests completed."
